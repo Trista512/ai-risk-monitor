@@ -196,6 +196,71 @@
     font-style: italic;
   }
 
+  /* ===== TICKER BAR (top of page) ===== */
+  .ticker-bar {
+    background: var(--navy);
+    color: white;
+    border-radius: 4px;
+    margin-bottom: 18px;
+    padding: 12px 18px;
+    overflow: hidden;
+    position: relative;
+  }
+  .ticker-track {
+    display: flex;
+    gap: 32px;
+    align-items: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;  /* IE */
+  }
+  .ticker-track::-webkit-scrollbar { display: none; }  /* Chrome */
+
+  .ticker-label {
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-right: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .ticker-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .ticker-symbol {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ice, #CADCFC);
+  }
+  .ticker-price {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: white;
+    font-weight: 500;
+  }
+  .ticker-change {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .ticker-change.up { color: #4ADE80; }
+  .ticker-change.down { color: #F87171; }
+  .ticker-change.flat { color: var(--text-faint); }
+  .ticker-empty {
+    color: var(--text-faint);
+    font-size: 12px;
+    font-style: italic;
+    padding: 2px 0;
+  }
+
   /* ===== ALERTS — 异常指标优先 (red + amber rows) ===== */
   .alerts {
     margin-top: 28px;
@@ -663,6 +728,14 @@
     <div><span class="pulse"></span>最后更新 <strong id="last-update">2026 年 5 月 31 日</strong></div>
   </div>
 </header>
+
+<!-- TICKER BAR · 股价实时快照 -->
+<div class="ticker-bar">
+  <div class="ticker-track" id="ticker-track">
+    <span class="ticker-label">实时股价</span>
+    <span class="ticker-empty" id="ticker-empty">数据加载中... (跑 update_monitor 后会自动填充)</span>
+  </div>
+</div>
 
 <!-- THE VERDICT — single most important block, 80% of daily use -->
 <div class="verdict">
@@ -1183,6 +1256,37 @@ if (LIVE_DATA.news && LIVE_DATA.news.length > 0) {
       <span class="news-tag">${item.query || ''}</span>
     `;
     block.appendChild(div);
+  });
+}
+
+// Populate ticker bar from stocks data
+if (LIVE_DATA.stocks && Object.keys(LIVE_DATA.stocks).length > 0) {
+  const track = document.getElementById('ticker-track');
+  const empty = document.getElementById('ticker-empty');
+  if (empty) empty.remove();
+
+  // Display order — match the priority of monitoring
+  const order = ['NVDA', 'ORCL', 'CRWV', 'MSFT', 'GOOG', 'AMZN', 'META', 'AVGO'];
+
+  order.forEach(symbol => {
+    const data = LIVE_DATA.stocks[symbol];
+    if (!data) return;
+
+    const change = data.change_30d_pct || 0;
+    let changeClass = 'flat';
+    let arrow = '─';
+    if (change > 0.05) { changeClass = 'up'; arrow = '↑'; }
+    else if (change < -0.05) { changeClass = 'down'; arrow = '↓'; }
+
+    const item = document.createElement('div');
+    item.className = 'ticker-item';
+    item.innerHTML = `
+      <span class="ticker-symbol">${symbol}</span>
+      <span class="ticker-price">$${data.price.toFixed(2)}</span>
+      <span class="ticker-change ${changeClass}">${arrow} ${change >= 0 ? '+' : ''}${change.toFixed(2)}%</span>
+    `;
+    item.title = `${data.name || symbol} · 30 天涨跌幅`;
+    track.appendChild(item);
   });
 }
 </script>
