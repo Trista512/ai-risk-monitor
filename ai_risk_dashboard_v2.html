@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 基建风险监控 · v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Light, paper-inspired palette */
+    --bg: #FAF8F4;            /* warm off-white, easier on eyes than pure white */
+    --bg-card: #FFFFFF;
+    --bg-soft: #F2EFE8;
+    --border: #E5E0D5;
+    --border-dark: #C4BDB0;
+
+    --text: #1A1A1A;          /* near-black, not pure black */
+    --text-mid: #555555;
+    --text-soft: #888888;
+    --text-faint: #B5B0A5;
+
+    --navy: #0B2545;          /* anchor color */
+    --accent: #2563EB;        /* signal blue */
+
+    /* Status colors — muted, not screaming */
+    --green: #15803D;
+    --green-soft: #DCFCE7;
+    --amber: #B45309;
+    --amber-soft: #FEF3C7;
+    --red: #B91C1C;
+    --red-soft: #FEE2E2;
+
+    --serif: 'Fraunces', Georgia, serif;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', 'Menlo', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  body {
+    padding: 32px 28px;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  /* ===== HEADER ===== */
+  .masthead {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  .brand {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--navy);
+    letter-spacing: -0.01em;
+  }
+  .brand-sub {
+    font-size: 11px;
+    color: var(--text-soft);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .masthead-right {
+    text-align: right;
+    font-size: 12px;
+    color: var(--text-mid);
+  }
+  .pulse {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 6px;
+    animation: pulse 2.5s ease-in-out infinite;
+    vertical-align: middle;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.5); }
+    50% { box-shadow: 0 0 0 8px rgba(21, 128, 61, 0); }
+  }
+
+  /* ===== VERDICT HERO (the 80% view) ===== */
+  .verdict {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 40px 44px;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .verdict::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--green);
+  }
+  .verdict-label {
+    font-size: 11px;
+    color: var(--text-soft);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .verdict-main {
+    display: flex;
+    align-items: baseline;
+    gap: 24px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .verdict-status {
+    font-family: var(--serif);
+    font-size: 64px;
+    font-weight: 600;
+    color: var(--green);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .verdict-status-zh {
+    font-family: var(--serif);
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--text);
+    font-style: italic;
+  }
+  .verdict-summary {
+    font-family: var(--serif);
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--text);
+    max-width: 780px;
+    font-weight: 400;
+  }
+  .verdict-summary em {
+    color: var(--red);
+    font-style: normal;
+    font-weight: 600;
+    font-family: var(--sans);
+    font-size: 17px;
+  }
+
+  /* Signal counts strip */
+  .signals-strip {
+    display: flex;
+    gap: 32px;
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+  .signal {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .signal-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .signal-dot.green { background: var(--green); }
+  .signal-dot.amber { background: var(--amber); }
+  .signal-dot.red { background: var(--red); }
+  .signal-count {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .signal-label {
+    font-size: 13px;
+    color: var(--text-mid);
+  }
+  .signals-right {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--text-mid);
+    font-style: italic;
+  }
+
+  /* ===== ALERTS — 异常指标优先 (red + amber rows) ===== */
+  .alerts {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+  .alerts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+  }
+  .alerts-title {
+    font-size: 11px;
+    color: var(--text-soft);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .alerts-hint {
+    font-size: 11px;
+    color: var(--text-faint);
+    font-style: italic;
+  }
+  .alerts-empty {
+    font-size: 13px;
+    color: var(--green);
+    font-style: italic;
+    padding: 12px 0;
+  }
+  .alert-row {
+    display: grid;
+    grid-template-columns: 6px 1fr auto auto;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--bg-soft);
+  }
+  .alert-row:last-child { border-bottom: none; }
+  .alert-bar {
+    width: 4px;
+    height: 36px;
+    border-radius: 2px;
+  }
+  .alert-bar.red { background: var(--red); }
+  .alert-bar.amber { background: var(--amber); }
+  .alert-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .alert-name {
+    font-size: 14px;
+    color: var(--text);
+    font-weight: 500;
+  }
+  .alert-context {
+    font-size: 12px;
+    color: var(--text-mid);
+    line-height: 1.5;
+  }
+  .alert-value {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .alert-value.red { color: var(--red); }
+  .alert-value.amber { color: var(--amber); }
+  .alert-pillar {
+    font-size: 10px;
+    color: var(--text-soft);
+    background: var(--bg-soft);
+    padding: 3px 8px;
+    border-radius: 100px;
+    white-space: nowrap;
+    letter-spacing: 0.05em;
+  }
+
+  /* ===== CHART SECTION ===== */
+  .chart-block {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px 26px 20px;
+  }
+  .chart-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .chart-title {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .chart-sub {
+    font-size: 11px;
+    color: var(--text-soft);
+    margin-bottom: 16px;
+  }
+  .chart-legend {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--text-mid);
+  }
+  .chart-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chart-legend-swatch {
+    width: 12px; height: 3px;
+    border-radius: 1px;
+  }
+  .chart-canvas-wrap {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    margin: 8px 0 4px;
+  }
+  .chart-canvas-wrap svg {
+    width: 100%; height: 100%;
+    display: block;
+  }
+  .chart-footnote {
+    font-size: 10px;
+    color: var(--text-faint);
+    font-style: italic;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--bg-soft);
+    line-height: 1.5;
+  }
+  .chart-tag {
+    display: inline-block;
+    padding: 2px 7px;
+    background: var(--bg-soft);
+    color: var(--text-soft);
+    font-size: 10px;
+    border-radius: 100px;
+    letter-spacing: 0.05em;
+  }
+  .chart-tooltip {
+    position: absolute;
+    background: var(--text);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: var(--mono);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    white-space: nowrap;
+    z-index: 10;
+  }
+  .chart-tooltip.show { opacity: 1; }
+
+  /* ===== SECTION HEADERS ===== */
+  .section-title {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--navy);
+    letter-spacing: -0.01em;
+    margin-bottom: 6px;
+  }
+  .section-sub {
+    font-size: 13px;
+    color: var(--text-mid);
+    margin-bottom: 20px;
+  }
+  .section { margin-bottom: 44px; }
+
+  /* ===== PILLAR CARDS (the 15% view) ===== */
+  .pillars {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(540px, 1fr));
+    gap: 20px;
+  }
+  .pillar {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px 26px;
+    transition: border-color 0.15s ease;
+  }
+  .pillar:hover { border-color: var(--border-dark); }
+
+  .pillar-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 18px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pillar-num {
+    font-family: var(--serif);
+    font-size: 13px;
+    color: var(--text-soft);
+    font-weight: 600;
+    letter-spacing: 0.15em;
+  }
+  .pillar-title {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    margin-top: 2px;
+    letter-spacing: -0.01em;
+  }
+  .pillar-status {
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 100px;
+    letter-spacing: 0.05em;
+  }
+  .pillar-status.green { background: var(--green-soft); color: var(--green); }
+  .pillar-status.amber { background: var(--amber-soft); color: var(--amber); }
+  .pillar-status.red { background: var(--red-soft); color: var(--red); }
+
+  /* Main metric in each pillar */
+  .pillar-metric {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .metric-value {
+    font-family: var(--mono);
+    font-size: 44px;
+    font-weight: 600;
+    color: var(--navy);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .metric-trend {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .metric-trend.up { color: var(--green); }
+  .metric-trend.down { color: var(--red); }
+  .metric-label {
+    font-size: 13px;
+    color: var(--text-mid);
+    margin-bottom: 14px;
+  }
+  .pillar-takeaway {
+    font-family: var(--serif);
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--text);
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+    font-style: italic;
+  }
+
+  /* Collapsible details */
+  details.pillar-details {
+    margin-top: 14px;
+  }
+  details.pillar-details summary {
+    list-style: none;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-soft);
+    padding: 6px 0;
+    user-select: none;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    transition: color 0.15s ease;
+  }
+  details.pillar-details summary:hover { color: var(--accent); }
+  details.pillar-details summary::-webkit-details-marker { display: none; }
+  details.pillar-details summary::before {
+    content: "▸ ";
+    margin-right: 4px;
+    transition: transform 0.2s ease;
+    display: inline-block;
+  }
+  details.pillar-details[open] summary::before {
+    transform: rotate(90deg);
+  }
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 13px;
+    border-bottom: 1px solid var(--bg-soft);
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label { color: var(--text-mid); }
+  .detail-value {
+    font-family: var(--mono);
+    color: var(--text);
+    font-weight: 500;
+  }
+  .detail-status {
+    margin-left: 8px;
+    font-size: 11px;
+  }
+  .detail-status.green { color: var(--green); }
+  .detail-status.amber { color: var(--amber); }
+  .detail-status.red { color: var(--red); }
+
+  /* ===== NEWS (compact) ===== */
+  .news-block {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px 26px;
+  }
+  .news-item {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 16px;
+    align-items: baseline;
+  }
+  .news-item:last-child { border-bottom: none; }
+  .news-item:first-child { padding-top: 0; }
+  .news-date {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-soft);
+    min-width: 70px;
+    flex-shrink: 0;
+  }
+  .news-title-link {
+    color: var(--text);
+    text-decoration: none;
+    font-size: 14px;
+    line-height: 1.5;
+    flex: 1;
+  }
+  .news-title-link:hover { color: var(--accent); }
+  .news-tag {
+    font-size: 10px;
+    color: var(--text-soft);
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ===== TRIGGERS (collapsible, since reference) ===== */
+  details.triggers-block {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0;
+    margin-bottom: 32px;
+  }
+  details.triggers-block summary {
+    cursor: pointer;
+    padding: 18px 26px;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+  }
+  details.triggers-block summary::-webkit-details-marker { display: none; }
+  details.triggers-block summary::after {
+    content: "▸";
+    color: var(--text-soft);
+    transition: transform 0.2s ease;
+    font-size: 12px;
+  }
+  details.triggers-block[open] summary::after {
+    transform: rotate(90deg);
+  }
+  .triggers-title-inline {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .triggers-sub-inline {
+    font-size: 12px;
+    color: var(--text-soft);
+    margin-left: 12px;
+  }
+  .triggers-content {
+    padding: 0 26px 26px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .trigger-card {
+    padding: 16px 18px;
+    border-left: 3px solid;
+    background: var(--bg-soft);
+    border-radius: 0 4px 4px 0;
+  }
+  .trigger-card.amber { border-color: var(--amber); }
+  .trigger-card.red { border-color: var(--red); }
+  .trigger-card.crit { border-color: #6B0000; }
+  .trigger-name {
+    font-family: var(--serif);
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .trigger-card.amber .trigger-name { color: var(--amber); }
+  .trigger-card.red .trigger-name { color: var(--red); }
+  .trigger-card.crit .trigger-name { color: #6B0000; }
+  .trigger-desc {
+    font-size: 12px;
+    color: var(--text-mid);
+    line-height: 1.6;
+  }
+
+  /* ===== FOOTER ===== */
+  .foot {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-soft);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    body { padding: 20px 16px; }
+    .verdict { padding: 24px 20px; }
+    .verdict-status { font-size: 48px; }
+    .verdict-status-zh { font-size: 22px; }
+    .verdict-summary { font-size: 16px; }
+    .signals-strip { flex-wrap: wrap; gap: 20px; }
+    .signals-right { margin-left: 0; width: 100%; }
+    .pillar { padding: 20px; }
+    .pillar-title { font-size: 19px; }
+    .metric-value { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Masthead -->
+<header class="masthead">
+  <div>
+    <div class="brand">AI 基建风险监控</div>
+    <div class="brand-sub">v2.0  ·  Internal</div>
+  </div>
+  <div class="masthead-right">
+    <div><span class="pulse"></span>最后更新 <strong id="last-update">2026 年 5 月 31 日</strong></div>
+  </div>
+</header>
+
+<!-- THE VERDICT — single most important block, 80% of daily use -->
+<div class="verdict">
+  <div class="verdict-label">今日结论</div>
+  <div class="verdict-main">
+    <div class="verdict-status">INTACT</div>
+    <div class="verdict-status-zh">周期完好,需密切关注</div>
+  </div>
+  <p class="verdict-summary">
+    四个支柱整体仍指向扩张。<em>但已有 2 个红灯信号集中在 OpenAI 资金生态</em>——CoreWeave CDS 675bps 已达困境水平,OpenAI 估值倍数 64× 偏紧绷。Anthropic $47B run-rate 提供营收侧抗压,但任一 hyperscaler 下调 capex 指引将立即推翻整个判断。
+  </p>
+
+  <div class="signals-strip">
+    <div class="signal">
+      <span class="signal-dot green"></span>
+      <span class="signal-count">17</span>
+      <span class="signal-label">绿灯</span>
+    </div>
+    <div class="signal">
+      <span class="signal-dot amber"></span>
+      <span class="signal-count">3</span>
+      <span class="signal-label">黄灯</span>
+    </div>
+    <div class="signal">
+      <span class="signal-dot red"></span>
+      <span class="signal-count">2</span>
+      <span class="signal-label">红灯</span>
+    </div>
+    <div class="signals-right">22 个监控指标 · 跨 4 个支柱</div>
+  </div>
+
+  <!-- ALERTS · 异常指标优先 -->
+  <div class="alerts">
+    <div class="alerts-header">
+      <span class="alerts-title">需关注的指标</span>
+      <span class="alerts-hint">按严重程度排序 · 红灯在先</span>
+    </div>
+
+    <!-- RED #1 -->
+    <div class="alert-row">
+      <div class="alert-bar red"></div>
+      <div class="alert-body">
+        <div class="alert-name">CoreWeave 5Y CDS</div>
+        <div class="alert-context">困境水平 (>500bps 黄, >700bps 红) · 隐含 5 年违约率 42% · 日频</div>
+      </div>
+      <div class="alert-value red">675 bps</div>
+      <span class="alert-pillar">02 · OpenAI</span>
+    </div>
+
+    <!-- RED #2 -->
+    <div class="alert-row">
+      <div class="alert-bar red"></div>
+      <div class="alert-body">
+        <div class="alert-name">OpenAI 估值 / 营收倍数</div>
+        <div class="alert-context">$830B 估值 ÷ $13B ARR · 阈值 >35x 即偏紧绷 · 事件触发</div>
+      </div>
+      <div class="alert-value red">63.8×</div>
+      <span class="alert-pillar">02 · OpenAI</span>
+    </div>
+
+    <!-- AMBER #1 -->
+    <div class="alert-row">
+      <div class="alert-bar amber"></div>
+      <div class="alert-body">
+        <div class="alert-name">Anthropic 企业客户 &gt;$1M ARR</div>
+        <div class="alert-context">2 个月翻倍至 1,000 · 增速若停滞 = enterprise 端见顶信号 · 季度</div>
+      </div>
+      <div class="alert-value amber">1,000</div>
+      <span class="alert-pillar">01 · Claude</span>
+    </div>
+
+    <!-- AMBER #2 -->
+    <div class="alert-row">
+      <div class="alert-bar amber"></div>
+      <div class="alert-body">
+        <div class="alert-name">AMZN 自由现金流</div>
+        <div class="alert-context">$200B capex 推动 2026 FCF 预期转负 · 最有可能率先收手的 hyperscaler · 季度</div>
+      </div>
+      <div class="alert-value amber">→ 转负</div>
+      <span class="alert-pillar">03 · Capex</span>
+    </div>
+
+    <!-- AMBER #3 -->
+    <div class="alert-row">
+      <div class="alert-bar amber"></div>
+      <div class="alert-body">
+        <div class="alert-name">Oracle capex (债务融资)</div>
+        <div class="alert-context">$50B 计划全部债务融资 · 已是负 FCF · 信用评级在 downgrade watch 边缘</div>
+      </div>
+      <div class="alert-value amber">$50B</div>
+      <span class="alert-pillar">03 · Capex</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- THE FOUR PILLARS — each pillar shows 1 headline metric, details collapsed -->
+<div class="section">
+  <h2 class="section-title">四个支柱</h2>
+  <p class="section-sub">每个支柱给出当前最重要的判断。展开 ▸ 查看细分指标。</p>
+
+  <div class="pillars">
+
+    <!-- Pillar 1: Claude -->
+    <div class="pillar">
+      <div class="pillar-head">
+        <div>
+          <div class="pillar-num">01 — Claude</div>
+          <div class="pillar-title">营收引擎</div>
+        </div>
+        <span class="pillar-status green">健康</span>
+      </div>
+
+      <div class="pillar-metric">
+        <div class="metric-value">$47<span style="font-size: 28px; font-weight: 500;">B</span></div>
+        <div class="metric-trend up">↑ 从 Apr $30B</div>
+      </div>
+      <div class="metric-label">Anthropic 年化 run-rate · 自报值 · 月度更新</div>
+
+      <p class="pillar-takeaway">
+        高速增长仍在持续,Claude Code ($2.5B) 是主引擎。估值 20× 处于合理区间,无重定价压力。
+      </p>
+
+      <details class="pillar-details">
+        <summary>展开 4 个细分指标</summary>
+        <div class="detail-row">
+          <span class="detail-label">Claude Code run-rate</span>
+          <span><span class="detail-value">$2.5B</span><span class="detail-status green">● 健康</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">企业客户 &gt;$1M ARR</span>
+          <span><span class="detail-value">1,000</span><span class="detail-status amber">● 关注</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">估值 / run-rate 倍数</span>
+          <span><span class="detail-value">20.5×</span><span class="detail-status green">● 合理</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Claude.ai 网页 MAU</span>
+          <span><span class="detail-value">18.9M</span><span class="detail-status green">● 健康</span></span>
+        </div>
+      </details>
+    </div>
+
+    <!-- Pillar 2: OpenAI -->
+    <div class="pillar">
+      <div class="pillar-head">
+        <div>
+          <div class="pillar-num">02 — OpenAI</div>
+          <div class="pillar-title">暴雷监控</div>
+        </div>
+        <span class="pillar-status red">2 红灯</span>
+      </div>
+
+      <div class="pillar-metric">
+        <div class="metric-value">675<span style="font-size: 22px; font-weight: 500; margin-left: 4px;">bps</span></div>
+        <div class="metric-trend down">困境水平</div>
+      </div>
+      <div class="metric-label">CoreWeave 5Y CDS · 隐含 5 年违约率 42% · 日频</div>
+
+      <p class="pillar-takeaway">
+        信用市场已对 CoreWeave 定价为类困境。OpenAI 估值倍数 64× 同时偏紧绷。两红信号但都集中在资金生态,尚未跨支柱扩散。
+      </p>
+
+      <details class="pillar-details">
+        <summary>展开 5 个细分指标</summary>
+        <div class="detail-row">
+          <span class="detail-label">Oracle 5Y CDS</span>
+          <span><span class="detail-value">105 bps</span><span class="detail-status green">● 正常</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">OpenAI 估值/营收倍数</span>
+          <span><span class="detail-value">63.8×</span><span class="detail-status red">● 偏紧</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">OpenAI 2026 烧钱预测</span>
+          <span><span class="detail-value">$14B</span><span class="detail-status amber">● 按指引</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">ChatGPT 周活</span>
+          <span><span class="detail-value">810M</span><span class="detail-status green">● 强劲</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">企业流失公告</span>
+          <span><span class="detail-value">0</span><span class="detail-status green">● 无</span></span>
+        </div>
+      </details>
+    </div>
+
+    <!-- Pillar 3: Capex -->
+    <div class="pillar">
+      <div class="pillar-head">
+        <div>
+          <div class="pillar-num">03 — Capex</div>
+          <div class="pillar-title">买家承诺</div>
+        </div>
+        <span class="pillar-status green">无下调</span>
+      </div>
+
+      <div class="pillar-metric">
+        <div class="metric-value">$725<span style="font-size: 28px; font-weight: 500;">B</span></div>
+        <div class="metric-trend up">↑ 77% YoY</div>
+      </div>
+      <div class="metric-label">4 家 hyperscaler 2026 合计 · 季度更新</div>
+
+      <p class="pillar-takeaway">
+        无任何一家下调既定指引——这是最重要的单一变量,保持完好。Google Cloud 待履行订单一季翻倍至 $462B。
+      </p>
+
+      <details class="pillar-details">
+        <summary>展开 5 个细分指标</summary>
+        <div class="detail-row">
+          <span class="detail-label">有公司下调指引?</span>
+          <span><span class="detail-value">无</span><span class="detail-status green">● 关键</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Google Cloud 待履行订单</span>
+          <span><span class="detail-value">$462B</span><span class="detail-status green">● 强</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">MSFT Azure 未满足积压</span>
+          <span><span class="detail-value">$80B</span><span class="detail-status green">● 强</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">AMZN 自由现金流</span>
+          <span><span class="detail-value">→ 转负</span><span class="detail-status amber">● 关注</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Oracle capex (债务融资)</span>
+          <span><span class="detail-value">$50B</span><span class="detail-status amber">● 杠杆高</span></span>
+        </div>
+      </details>
+    </div>
+
+    <!-- Pillar 4: Hardware -->
+    <div class="pillar">
+      <div class="pillar-head">
+        <div>
+          <div class="pillar-num">04 — 硬件</div>
+          <div class="pillar-title">领先指标</div>
+        </div>
+        <span class="pillar-status green">需求紧</span>
+      </div>
+
+      <div class="pillar-metric">
+        <div class="metric-value">72<span style="font-size: 28px; font-weight: 500;">%</span></div>
+        <div class="metric-trend up">历史性高位</div>
+      </div>
+      <div class="metric-label">SK Hynix 经营利润率 · 内存周期峰值代理 · 季度</div>
+
+      <p class="pillar-takeaway">
+        内存市场处于历史性繁荣,HBM 短缺持续。B200 租赁价 $2.65 稳定。这些都是"还在涨"的领先指标——拐点出现时,这里会最先松动。
+      </p>
+
+      <details class="pillar-details">
+        <summary>展开 5 个细分指标</summary>
+        <div class="detail-row">
+          <span class="detail-label">NVDA 数据中心环比</span>
+          <span><span class="detail-value">待财报</span><span class="detail-status green">● 等待</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">B200 在手订单</span>
+          <span><span class="detail-value">3.6M</span><span class="detail-status green">● 紧</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">B200 预付租赁价</span>
+          <span><span class="detail-value">$2.65/小时</span><span class="detail-status green">● 稳</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">DRAM 合约价 YoY</span>
+          <span><span class="detail-value">+50%</span><span class="detail-status green">● 强</span></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Goldman DRAM 缺口</span>
+          <span><span class="detail-value">4.9%</span><span class="detail-status green">● 严重短缺</span></span>
+        </div>
+      </details>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- GPU PRICE CHART -->
+<div class="section">
+  <h2 class="section-title">GPU 算力价格走势</h2>
+  <p class="section-sub">云租赁价格作为算力供需代理 · 价格下跌 = 供给宽松 · 价格上涨 = 需求紧 · 周频更新</p>
+
+  <div class="chart-block">
+    <div class="chart-head">
+      <div>
+        <div class="chart-title">Nvidia 数据中心 GPU 云租赁价 · 过去 12 个月</div>
+      </div>
+      <span class="chart-tag">MOCK DATA</span>
+    </div>
+
+    <div class="chart-legend">
+      <div class="chart-legend-item">
+        <span class="chart-legend-swatch" style="background:#0B2545;"></span>B200
+      </div>
+      <div class="chart-legend-item">
+        <span class="chart-legend-swatch" style="background:#2563EB;"></span>H200
+      </div>
+      <div class="chart-legend-item">
+        <span class="chart-legend-swatch" style="background:#B45309;"></span>H100
+      </div>
+      <div class="chart-legend-item">
+        <span class="chart-legend-swatch" style="background:#888;"></span>A100
+      </div>
+    </div>
+
+    <div class="chart-canvas-wrap" id="chart-wrap">
+      <svg viewBox="0 0 1100 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" id="price-chart">
+        <!-- Y-axis grid lines + labels (price levels: $0, $2, $4, $6, $8, $10) -->
+        <g class="grid" stroke="#E5E0D5" stroke-width="0.5" stroke-dasharray="2,3">
+          <line x1="50" y1="40" x2="1080" y2="40"/>
+          <line x1="50" y1="96" x2="1080" y2="96"/>
+          <line x1="50" y1="152" x2="1080" y2="152"/>
+          <line x1="50" y1="208" x2="1080" y2="208"/>
+          <line x1="50" y1="264" x2="1080" y2="264"/>
+          <line x1="50" y1="290" x2="1080" y2="290"/>
+        </g>
+
+        <!-- Y-axis labels -->
+        <g font-family="JetBrains Mono, monospace" font-size="10" fill="#888888">
+          <text x="42" y="44" text-anchor="end">$10</text>
+          <text x="42" y="100" text-anchor="end">$8</text>
+          <text x="42" y="156" text-anchor="end">$6</text>
+          <text x="42" y="212" text-anchor="end">$4</text>
+          <text x="42" y="268" text-anchor="end">$2</text>
+          <text x="42" y="294" text-anchor="end">$0</text>
+        </g>
+
+        <!-- X-axis labels (months) -->
+        <g font-family="JetBrains Mono, monospace" font-size="10" fill="#888888">
+          <text x="50" y="312">Jun 25</text>
+          <text x="135" y="312">Jul</text>
+          <text x="220" y="312">Aug</text>
+          <text x="305" y="312">Sep</text>
+          <text x="390" y="312">Oct</text>
+          <text x="475" y="312">Nov</text>
+          <text x="560" y="312">Dec</text>
+          <text x="645" y="312">Jan 26</text>
+          <text x="745" y="312">Feb</text>
+          <text x="830" y="312">Mar</text>
+          <text x="915" y="312">Apr</text>
+          <text x="1000" y="312">May</text>
+        </g>
+
+        <!-- A100 line (gray, declining trend - older gen) -->
+        <polyline fill="none" stroke="#888888" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+          points="50,240 92,242 134,238 176,244 218,248 260,252 302,255 344,258 386,262 428,260 470,264 512,268 554,266 596,270 638,272 680,268 722,270 764,272 806,275 848,272 890,274 932,276 974,272 1016,274 1058,276 1080,278"/>
+
+        <!-- H100 line (amber, was hot then cooled) -->
+        <polyline fill="none" stroke="#B45309" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+          points="50,225 92,222 134,218 176,212 218,205 260,198 302,192 344,196 386,202 428,210 470,215 512,212 554,205 596,200 638,194 680,188 722,182 764,178 806,168 848,156 890,140 932,128 974,118 1016,165 1058,168 1080,182"/>
+
+        <!-- H200 line (blue) -->
+        <polyline fill="none" stroke="#2563EB" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+          points="386,188 428,184 470,180 512,176 554,174 596,170 638,168 680,166 722,162 764,160 806,158 848,160 890,158 932,156 974,160 1016,158 1058,162 1080,160"/>
+
+        <!-- B200 line (navy, newest - high prices) -->
+        <polyline fill="none" stroke="#0B2545" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+          points="554,162 596,156 638,148 680,142 722,138 764,140 806,134 848,128 890,126 932,128 974,130 1016,134 1058,138 1080,144"/>
+
+        <!-- Markers for current values -->
+        <g>
+          <!-- B200 endpoint -->
+          <circle cx="1080" cy="144" r="4" fill="#0B2545"/>
+          <!-- H200 endpoint -->
+          <circle cx="1080" cy="160" r="4" fill="#2563EB"/>
+          <!-- H100 endpoint -->
+          <circle cx="1080" cy="182" r="4" fill="#B45309"/>
+          <!-- A100 endpoint -->
+          <circle cx="1080" cy="278" r="3" fill="#888888"/>
+        </g>
+
+        <!-- Endpoint value labels (placed safely inside) -->
+        <g font-family="JetBrains Mono, monospace" font-size="11" font-weight="600">
+          <rect x="1015" y="135" width="60" height="16" fill="#FFFFFF" opacity="0.9"/>
+          <text x="1045" y="146" text-anchor="middle" fill="#0B2545">B200 $6.4</text>
+
+          <rect x="1015" y="194" width="60" height="16" fill="#FFFFFF" opacity="0.9"/>
+          <text x="1045" y="205" text-anchor="middle" fill="#2563EB">H200 $5.8</text>
+
+          <rect x="1015" y="218" width="60" height="16" fill="#FFFFFF" opacity="0.9"/>
+          <text x="1045" y="229" text-anchor="middle" fill="#B45309">H100 $2.6</text>
+
+          <rect x="1015" y="287" width="60" height="16" fill="#FFFFFF" opacity="0.9"/>
+          <text x="1045" y="298" text-anchor="middle" fill="#888888">A100 $0.9</text>
+        </g>
+
+        <!-- Annotation: May 2026 H100 spike -->
+        <g font-family="Inter, sans-serif" font-size="10" fill="#B91C1C">
+          <line x1="974" y1="118" x2="974" y2="55" stroke="#B91C1C" stroke-width="0.5" stroke-dasharray="2,2"/>
+          <text x="974" y="50" text-anchor="middle" font-weight="600">5月初 H100 飙升</text>
+          <text x="974" y="36" text-anchor="middle">~$3.20</text>
+        </g>
+
+        <!-- Annotation: Blackwell launch -->
+        <g font-family="Inter, sans-serif" font-size="10" fill="#888888">
+          <line x1="554" y1="162" x2="554" y2="62" stroke="#888888" stroke-width="0.5" stroke-dasharray="2,2"/>
+          <text x="554" y="56" text-anchor="middle" font-style="italic">B200 上市</text>
+          <text x="554" y="42" text-anchor="middle" font-style="italic" fill="#B5B0A5">Dec 2025</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="chart-footnote">
+      数据说明:本图为 MOCK 数据,仅展示图表样式与逻辑。真实数据需爬 Lambda / RunPod / Vast.ai 等云提供商价格页,或订阅 Ornn Compute Price Index (OCPI) 拿成交价。每周自动更新,12 个月历史。<br>
+      关键阈值:B200 reserved $/hr <strong>跌破 $2 = 供给过剩红警</strong> · A100 价格趋势反映上代芯片淘汰速度 · H100 短期飙升后回落是周期内常见 pattern。
+    </div>
+  </div>
+</div>
+
+
+<!-- NEWS — compact, only 5 items -->
+<div class="section">
+  <h2 class="section-title">近期新闻流</h2>
+  <p class="section-sub">监控关键词:OpenAI 融资 · Oracle 债券 · CoreWeave 债务 · hyperscaler capex · NVDA · HBM · DRAM</p>
+
+  <div class="news-block" id="news-block">
+    <div class="news-item">
+      <span class="news-date">5月 28</span>
+      <a class="news-title-link" href="#" target="_blank">Anthropic 报告 $47B run-rate,估值接近 $1T</a>
+      <span class="news-tag">Anthropic Claude</span>
+    </div>
+    <div class="news-item">
+      <span class="news-date">5月 27</span>
+      <a class="news-title-link" href="#" target="_blank">CoreWeave 债券因客户集中担忧下跌 4%</a>
+      <span class="news-tag">CoreWeave 债务</span>
+    </div>
+    <div class="news-item">
+      <span class="news-date">5月 26</span>
+      <a class="news-title-link" href="#" target="_blank">Meta 在 Q1 资本开支提升上面对分析师质疑</a>
+      <span class="news-tag">hyperscaler capex</span>
+    </div>
+    <div class="news-item">
+      <span class="news-date">5月 25</span>
+      <a class="news-title-link" href="#" target="_blank">SK Hynix 表示 HBM4 已售罄至 2028 年</a>
+      <span class="news-tag">HBM 短缺</span>
+    </div>
+    <div class="news-item">
+      <span class="news-date">5月 24</span>
+      <a class="news-title-link" href="#" target="_blank">Oracle 第三方债评估保持稳定,价差 105 bps</a>
+      <span class="news-tag">Oracle 债券</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- TRIGGERS — collapsed by default, since this is reference not daily-glance -->
+<details class="triggers-block">
+  <summary>
+    <span>
+      <span class="triggers-title-inline">行动触发器</span>
+      <span class="triggers-sub-inline">三档机械式判定阈值 · 参考</span>
+    </span>
+  </summary>
+  <div class="triggers-content">
+    <div class="trigger-card amber">
+      <div class="trigger-name">黄灯 · 密切关注</div>
+      <div class="trigger-desc">
+        Oracle CDS &gt; 150bps · CoreWeave CDS &gt; 500bps · OpenAI 倍数压缩 30%+ · 烧钱超指引 · 内存涨幅 &lt;15%
+      </div>
+    </div>
+    <div class="trigger-card red">
+      <div class="trigger-name">红灯 · 风险显现</div>
+      <div class="trigger-desc">
+        Oracle CDS &gt; 200bps · CoreWeave CDS &gt; 700bps · OpenAI 估值缩水融资 · 2+ 企业流失 · NVDA 环比 &lt;10%
+      </div>
+    </div>
+    <div class="trigger-card crit">
+      <div class="trigger-name">关键 · 卖出信号</div>
+      <div class="trigger-desc">
+        CoreWeave CDS &gt; 1000bps · Oracle 信用降级 · OpenAI API 降价 &gt;30% · 任一 hyperscaler 下调 capex 指引
+      </div>
+    </div>
+  </div>
+</details>
+
+
+<footer class="foot">
+  <div>跑 <code style="font-family: var(--mono); color: var(--accent);">python update_monitor.py</code> 更新数据 · 不构成投资建议</div>
+  <div>v2.0 · 改自 v1.0 · 优化阅读舒适度与重点突出</div>
+</footer>
+
+<script>
+/*LIVE_DATA_INJECT*/
+
+// Fallback for first load
+if (typeof LIVE_DATA === 'undefined') {
+  window.LIVE_DATA = { as_of: null, stocks: {}, news: [] };
+}
+
+// Update timestamp if live data exists
+if (LIVE_DATA.as_of) {
+  document.getElementById('last-update').textContent = LIVE_DATA.as_of;
+}
+
+// Update news if live data exists
+if (LIVE_DATA.news && LIVE_DATA.news.length > 0) {
+  const block = document.getElementById('news-block');
+  block.innerHTML = '';
+  LIVE_DATA.news.slice(0, 5).forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'news-item';
+    let date = '';
+    if (item.published) {
+      try {
+        const d = new Date(item.published);
+        date = `${d.getMonth()+1}月 ${d.getDate()}`;
+      } catch (e) { date = ''; }
+    }
+    div.innerHTML = `
+      <span class="news-date">${date}</span>
+      <a class="news-title-link" href="${item.link}" target="_blank" rel="noopener">${item.title}</a>
+      <span class="news-tag">${item.query || ''}</span>
+    `;
+    block.appendChild(div);
+  });
+}
+</script>
+
+</body>
+</html>
